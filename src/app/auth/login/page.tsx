@@ -15,7 +15,7 @@ import { ApiError } from "@/lib/api-client";
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -23,7 +23,7 @@ export default function LoginPage() {
     e.preventDefault();
     setBusy(true);
     try {
-      await login(email, password);
+      await login(identifier.trim(), password);
       router.replace("/home");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not sign in.");
@@ -47,18 +47,23 @@ export default function LoginPage() {
     >
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="identifier">Email or username</Label>
           <Input
-            id="email"
-            type="email"
-            autoComplete="email"
+            id="identifier"
+            autoComplete="username"
+            autoCapitalize="none"
             required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
           />
         </div>
         <div>
-          <Label htmlFor="password">Password</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password">Password</Label>
+            <Link href="/auth/forgot-password" className="text-xs font-medium text-primary">
+              Forgot password?
+            </Link>
+          </div>
           <Input
             id="password"
             type="password"
@@ -71,6 +76,9 @@ export default function LoginPage() {
         <Button type="submit" size="lg" className="w-full" disabled={busy}>
           {busy ? "Signing in…" : "Sign in"}
         </Button>
+        <p className="text-center text-xs text-muted-foreground">
+          Signing in with a username? If you forgot your password, ask your admin to reset it.
+        </p>
       </form>
     </AuthShell>
   );

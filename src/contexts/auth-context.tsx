@@ -10,21 +10,24 @@ import type { Me, Session } from "@/lib/types";
 interface AuthState {
   me: Me | null;
   loading: boolean; // initial hydration in progress
-  login: (email: string, password: string) => Promise<void>;
+  mustSetPassword: boolean;
+  login: (identifier: string, password: string) => Promise<void>;
   register: (payload: RegisterOrgPayload) => Promise<void>;
   consumeSession: (session: Session) => void;
+  setPassword: (password: string) => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
 
 function sessionToMe(s: Session): Me {
-  return { org_role: s.org_role, user: s.user, org: s.org };
+  return { org_role: s.org_role, must_set_password: s.must_set_password, user: s.user, org: s.org };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
+  const [mustSetPassword, setMustSetPassword] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Hydrate from a stored token on first load.
@@ -37,7 +40,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       try {
         const data = await authApi.me();
-        if (!cancelled) setMe(data);
+        if (!cancelled) {
+          setMe(data);
+          setMustSetPassword(data.must_set_password);
+        }
       } catch {
         tokenStore.clear();
       } finally {
@@ -52,11 +58,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const consumeSession = useCallback((session: Session) => {
     tokenStore.set(session.access_token, session.refresh_token);
     setMe(sessionToMe(session));
+    setMustSetPassword(session.must_set_password);
   }, []);
 
   const login = useCallback(
-    async (email: string, password: string) => {
-      consumeSession(await authApi.login(email, password));
+    async (identifier: string, password: string) => {
+      consumeSession(await authApi.login(identifier, password));
     },
     [consumeSession],
   );
@@ -68,14 +75,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [consumeSession],
   );
 
+  const setPassword = useCallback(async (password: string) => {
+    await authApi.setPassword(password);
+    setMustSetPassword(false);
+  }, []);
+
   const logout = useCallback(() => {
     tokenStore.clear();
     setMe(null);
+    setMustSetPassword(false);
     router.replace("/auth/login");
   }, [router]);
 
   return (
-    <AuthContext.Provider value={{ me, loading, login, register, consumeSession, logout }}>
+    <AuthContext.Provider
+      value={{ me, loading, mustSetPassword, login, register, consumeSession, setPassword, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

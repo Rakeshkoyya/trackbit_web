@@ -6,6 +6,7 @@ export interface User {
   id: string;
   name: string;
   email: string | null;
+  username: string | null;
   phone: string | null;
 }
 
@@ -21,12 +22,14 @@ export interface Session {
   refresh_token: string;
   token_type: string;
   org_role: OrgRole;
+  must_set_password: boolean;
   user: User;
   org: Org;
 }
 
 export interface Me {
   org_role: OrgRole;
+  must_set_password: boolean;
   user: User;
   org: Org;
 }
@@ -127,12 +130,42 @@ export interface Member {
   user_id: string;
   name: string;
   email: string | null;
+  username: string | null;
   phone: string | null;
   role: OrgRole;
   status: string;
   last_active_at: string | null;
   has_email: boolean;
   has_phone: boolean;
+  pending: boolean;
+}
+
+// ---- Members: bulk create + admin reset ----
+export interface BulkMemberInput {
+  name: string;
+  username: string;
+  password: string;
+  role: OrgRole;
+}
+
+export interface BulkMemberResult {
+  name: string;
+  username: string;
+  role: OrgRole;
+  ok: boolean;
+  user_id: string | null;
+  password: string | null;
+  error: string | null;
+}
+
+export interface BulkMembersResult {
+  results: BulkMemberResult[];
+  created: number;
+}
+
+export interface AdminResetResult {
+  mode: "link_sent" | "password_set";
+  password: string | null;
 }
 
 // ---- Reports (S6 board report, S7 org dashboard) ----

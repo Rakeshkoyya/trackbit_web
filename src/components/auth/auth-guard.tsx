@@ -23,19 +23,21 @@ export function AuthGuard({
   children: React.ReactNode;
   requireRole?: OrgRole;
 }) {
-  const { me, loading } = useAuth();
+  const { me, loading, mustSetPassword } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (loading) return;
     if (!me) {
       router.replace("/auth/login");
+    } else if (mustSetPassword) {
+      router.replace("/auth/set-password");
     } else if (requireRole && me.org_role !== requireRole) {
       router.replace("/home");
     }
-  }, [loading, me, requireRole, router]);
+  }, [loading, me, mustSetPassword, requireRole, router]);
 
-  if (loading || !me || (requireRole && me.org_role !== requireRole)) {
+  if (loading || !me || mustSetPassword || (requireRole && me.org_role !== requireRole)) {
     return <FullScreenSpinner />;
   }
   return <>{children}</>;

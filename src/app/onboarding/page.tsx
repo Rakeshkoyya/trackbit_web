@@ -36,16 +36,8 @@ function AddMembersStep({ onNext }: { onNext: () => void }) {
   const [added, setAdded] = useState<{ name: string; link: string }[]>([]);
 
   const invite = useMutation({
-    mutationFn: () => {
-      const isEmail = contact.includes("@");
-      return appApi.inviteMember({
-        name: name.trim(),
-        email: isEmail ? contact.trim() : undefined,
-        phone: isEmail ? undefined : contact.trim(),
-        role: "member",
-        mode: "invite_link",
-      });
-    },
+    mutationFn: () =>
+      appApi.inviteMember({ name: name.trim(), email: contact.trim(), role: "member" }),
     onSuccess: (res) => {
       setAdded((a) => [...a, { name: res.name, link: res.invite_url }]);
       setName("");

@@ -1,8 +1,11 @@
 import { api } from "@/lib/api-client";
 import type {
+  AdminResetResult,
   Attachment,
   Billing,
   Board,
+  BulkMemberInput,
+  BulkMembersResult,
   BoardReport,
   BoardsList,
   BoardTable,
@@ -125,11 +128,17 @@ export const appApi = {
 
   // Members
   members: () => api.get<{ members: Member[] }>("/org/members"),
-  inviteMember: (body: { name: string; email?: string; phone?: string; role: string; mode: string }) =>
+  inviteMember: (body: { name: string; email: string; role: string }) =>
     api.post<{ user_id: string; name: string; role: string; invite_url: string }>(
       "/org/members/invite",
-      body,
+      { ...body, mode: "email_invite" },
     ),
+  bulkAddMembers: (members: BulkMemberInput[]) =>
+    api.post<BulkMembersResult>("/org/members/bulk", { members }),
+  resetMemberPassword: (user_id: string, password?: string) =>
+    api.post<AdminResetResult>(`/org/members/${user_id}/reset-password`, {
+      password: password ?? null,
+    }),
   changeRole: (user_id: string, role: string) =>
     api.patch<Member>(`/org/members/${user_id}/role`, { role }),
   removeMember: (user_id: string) =>

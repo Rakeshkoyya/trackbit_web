@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { ApiError } from "@/lib/api-client";
 import { authApi } from "@/lib/auth-api";
 
-/** Redeems a magic-link / invite token, then lands the user on Home. */
+/** Redeems an invite token, then lands the user on Home (or set-password). */
 export function JoinClient({ token }: { token: string }) {
   const { consumeSession } = useAuth();
   const router = useRouter();
@@ -24,7 +24,7 @@ export function JoinClient({ token }: { token: string }) {
       try {
         const session = await authApi.verifyToken(token);
         consumeSession(session);
-        router.replace("/home");
+        router.replace(session.must_set_password ? "/auth/set-password" : "/home");
       } catch (err) {
         setError(
           err instanceof ApiError ? err.message : "This link could not be opened.",
