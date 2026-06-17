@@ -3,9 +3,15 @@
 /*
   TrackBit design tokens. North-star palette: calm and warm, never alarming.
   Overdue uses amber (warning), not red — "misses never stack into shame".
-  Light mode only for v2 launch; dark tokens reserved.
+  Two themes: light (:root) and dark (.dark on <html>). The .dark class is set
+  pre-hydration by an inline script in layout.tsx, so there is no flash; the
+  topbar toggle (theme-toggle.tsx) flips it and persists to localStorage.
+  Components only ever reference the semantic tokens below, so both themes flow
+  through automatically via the @theme inline mapping.
 */
 :root {
+  color-scheme: light;
+
   --background: #f7f7f5;        /* warm off-white app canvas */
   --foreground: #1c1b19;        /* near-black ink */
   --card: #ffffff;
@@ -33,6 +39,41 @@
   --danger-foreground: #ffffff;
 
   --radius: 0.75rem;
+}
+
+/*
+  Dark theme — a warm charcoal canvas (not cold blue-grey) so it stays in the
+  same calm family as light. Greens/ambers are nudged brighter so they read
+  against the dark surfaces; foreground is a warm off-white, never pure white.
+*/
+.dark {
+  color-scheme: dark;
+
+  --background: #16160f;        /* warm near-black canvas */
+  --foreground: #ece9e1;        /* warm off-white ink */
+  --card: #21211b;             /* raised surface */
+  --card-foreground: #ece9e1;
+  --muted: #2a2922;
+  --muted-foreground: #a6a399;
+  --border: #34332b;
+  --input: #34332b;
+  --ring: #5fae84;
+
+  --primary: #3a9468;           /* forest green, brightened for dark */
+  --primary-foreground: #f7faf8;
+
+  --accent: #243029;            /* deep green-tinted surface */
+  --accent-foreground: #bfe3cf;
+
+  --success: #43a771;
+  --success-foreground: #07150e;
+
+  --warning: #d49a3f;           /* amber, brightened for dark */
+  --warning-foreground: #1c1405;
+  --warning-soft: #2d2415;      /* dark amber wash for overdue rows */
+
+  --danger: #d8624e;
+  --danger-foreground: #1a0a07;
 }
 
 @theme inline {

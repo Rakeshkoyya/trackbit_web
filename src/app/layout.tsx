@@ -7,6 +7,10 @@ import "./globals.css";
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
+// Runs before paint so the saved/system theme is applied with no flash of the
+// wrong colors. Kept in sync with theme-toggle.tsx (STORAGE_KEY = trackbit_theme).
+const themeInitScript = `(function(){try{var t=localStorage.getItem('trackbit_theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}var r=document.documentElement;r.classList.toggle('dark',t==='dark');r.style.colorScheme=t;}catch(e){}})();`;
+
 export const metadata: Metadata = {
   title: "TrackBit — simple, stress-free task management",
   description:
@@ -26,8 +30,9 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full`}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full`} suppressHydrationWarning>
       <body className="min-h-dvh">
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

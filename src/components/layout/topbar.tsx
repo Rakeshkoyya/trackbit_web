@@ -3,6 +3,7 @@
 import { LogOut } from "lucide-react";
 
 import { NotificationsToggle } from "@/components/layout/notifications-toggle";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -19,6 +20,7 @@ export function Topbar() {
         </p>
       </div>
       <div className="flex items-center gap-1">
+        <ThemeToggle />
         <NotificationsToggle />
         <Button variant="ghost" size="sm" onClick={logout} aria-label="Sign out">
           <LogOut className="h-4 w-4" />

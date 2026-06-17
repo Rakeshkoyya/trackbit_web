@@ -136,7 +136,9 @@ export default function HomePage() {
   const rows: BoardRow[] = onBoardTab
     ? (boardTable.data?.rows ?? []).filter((r) => !r.assignee || r.assignee.id === myId)
     : (myTasks.data?.rows ?? []);
-  const groupBy: GroupBy = onBoardTab ? "category" : "board";
+  // My tasks = one flat, ungrouped list across all boards, ordered by urgency so
+  // the next thing to do is on top. Board tabs keep their category grouping.
+  const groupBy: GroupBy = onBoardTab ? "category" : "none";
   const columns: ColumnKey[] = onBoardTab ? ["person", "due", "priority"] : ["due", "priority"];
   const loading = onBoardTab ? boardTable.isLoading : myTasks.isLoading;
 
@@ -210,6 +212,8 @@ export default function HomePage() {
           rows={rows}
           groupBy={groupBy}
           columns={columns}
+          sortBy={onBoardTab ? "created" : "urgency"}
+          showBoard={!onBoardTab}
           groupDefs={onBoardTab ? boardTable.data?.groups : undefined}
           addContext={onBoardTab ? { boardId: tab } : undefined}
           hideEmptyGroups

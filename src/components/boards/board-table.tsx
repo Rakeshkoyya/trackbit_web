@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 
 export type GroupBy = "none" | "status" | "assignee" | "category" | "board" | "priority";
 export type ColumnKey = "person" | "due" | "priority";
+export type SortBy = "created" | "urgency";
 export type TaskTableHandle = { focusAdd: () => void };
 
 function invalidateTables(qc: QueryClient) {
@@ -80,21 +81,26 @@ export const TaskTable = forwardRef<TaskTableHandle, {
   members?: Member[];
   addContext?: { boardId: string };
   hideEmptyGroups?: boolean;
+  /** "created" (default) appends new tasks to the bottom; "urgency" sorts
+   *  overdue → due today → later → no date, with done tasks sinking last. */
+  sortBy?: SortBy;
+  /** Show each task's board as a small tag — for the cross-board "My tasks" list. */
+  showBoard?: boolean;
   onComplete: (row: BoardRow) => void;
   onReopen: (row: BoardRow) => void;
   onOpen: (row: BoardRow) => void;
 }>(function TaskTable(
-  { rows, groupBy, columns = ["person", "due", "priority"], groupDefs, addContext, hideEmptyGroups, onComplete, onReopen, onOpen },
+  { rows, groupBy, columns = ["person", "due", "priority"], groupDefs, addContext, hideEmptyGroups, sortBy = "created", showBoard = false, onComplete, onReopen, onOpen },
   ref,
 ) {
   const firstAddRef = useRef<HTMLInputElement>(null);
   useImperativeHandle(ref, () => ({ focusAdd: () => firstAddRef.current?.focus() }), []);
 
   const cols = colsFor(columns);
-  const groups = buildGroups(rows, groupBy, groupDefs, hideEmptyGroups);
+  const groups = buildGroups(rows, groupBy, groupDefs, hideEmptyGroups, sortBy);
   const canAddRows = addContext != null && (groupBy === "category" || groupBy === "none");
   const boardId = addContext?.boardId;
-  const rowProps = { columns, cols, groups: groupDefs, boardId, onComplete, onReopen, onOpen };
+  const rowProps = { columns, cols, groups: groupDefs, boardId, showBoard, onComplete, onReopen, onOpen };
 
   const colHeader = (
     <div
@@ -242,6 +248,7 @@ function Row({
   cols,
   groups,
   boardId,
+  showBoard,
   onComplete,
   onReopen,
   onOpen,
@@ -251,12 +258,14 @@ function Row({
   cols: string;
   groups?: BoardGroup[];
   boardId?: string;
+  showBoard?: boolean;
   onComplete: (row: BoardRow) => void;
   onReopen: (row: BoardRow) => void;
   onOpen: (row: BoardRow) => void;
 }) {
   const done = row.status === "done";
   const overdue = row.due_at != null && !done && new Date(row.due_at) < new Date();
+  const boardName = showBoard ? (row as MyTaskRow).board_name : null;
 
   return (
     <div
@@ -280,6 +289,11 @@ function Row({
           <span className="inline-flex shrink-0 items-center text-xs text-warning">
             <CornerUpLeft className="h-3 w-3" />
             {row.pass_count > 1 ? row.pass_count : ""}
+          </span>
+        ) : null}
+        {boardName ? (
+          <span className="max-w-[40%] shrink-0 truncate rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+            {boardName}
           </span>
         ) : null}
       </div>
@@ -1013,8 +1027,48 @@ function sortRows(rows: BoardRow[]): BoardRow[] {
   );
 }
 
-function buildGroups(rows: BoardRow[], groupBy: GroupBy, groupDefs?: BoardGroup[], hideEmpty = false): Group[] {
-  const sorted = sortRows(rows);
+/** Urgency bucket: overdue (0) → due today (1) → due later (2) → no date (3) →
+ *  done (4, sinks to the bottom). Recurring rows due today count as bucket 1. */
+function urgencyRank(row: BoardRow): number {
+  if (row.status === "done") return 4;
+  if (row.due_at) {
+    const due = new Date(row.due_at);
+    const now = new Date();
+    if (due.getTime() < now.getTime()) return 0;
+    if (
+      due.getFullYear() === now.getFullYear() &&
+      due.getMonth() === now.getMonth() &&
+      due.getDate() === now.getDate()
+    ) {
+      return 1;
+    }
+    return 2;
+  }
+  if (row.kind === "recurring" && row.occurs_today) return 1;
+  return 3;
+}
+
+/** "Do-next" order for the flat My-tasks list. */
+function sortByUrgency(rows: BoardRow[]): BoardRow[] {
+  return [...rows].sort((a, b) => {
+    const ra = urgencyRank(a);
+    const rb = urgencyRank(b);
+    if (ra !== rb) return ra - rb;
+    const da = a.due_at ? new Date(a.due_at).getTime() : Infinity;
+    const db = b.due_at ? new Date(b.due_at).getTime() : Infinity;
+    if (da !== db) return da - db;
+    return a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0;
+  });
+}
+
+function buildGroups(
+  rows: BoardRow[],
+  groupBy: GroupBy,
+  groupDefs?: BoardGroup[],
+  hideEmpty = false,
+  sortBy: SortBy = "created",
+): Group[] {
+  const sorted = sortBy === "urgency" ? sortByUrgency(rows) : sortRows(rows);
   if (groupBy === "none") {
     return [{ key: "all", label: "", color: "", rows: sorted, category: null, editable: false }];
   }
