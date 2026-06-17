@@ -141,12 +141,17 @@ body {
   60% { opacity: 1; transform: scale(1.1); }
   100% { transform: scale(1); }
 }
+@keyframes tb-menu-in {
+  0% { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
 
 .tb-check-pop { animation: tb-check-pop 220ms cubic-bezier(0.34, 1.56, 0.64, 1); }
 .tb-row-out { animation: tb-row-out 700ms ease forwards; overflow: hidden; }
 .tb-ritual-in { animation: tb-ritual-in 360ms cubic-bezier(0.34, 1.56, 0.64, 1); }
 .tb-pop-in { animation: tb-pop-in 420ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.tb-menu-in { animation: tb-menu-in 140ms ease-out; transform-origin: top right; }
 
 @media (prefers-reduced-motion: reduce) {
-  .tb-check-pop, .tb-row-out, .tb-ritual-in, .tb-pop-in { animation: none; }
+  .tb-check-pop, .tb-row-out, .tb-ritual-in, .tb-pop-in, .tb-menu-in { animation: none; }
 }

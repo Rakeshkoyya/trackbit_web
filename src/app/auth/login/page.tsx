@@ -9,6 +9,7 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/contexts/auth-context";
 import { ApiError } from "@/lib/api-client";
 
@@ -58,20 +59,19 @@ export default function LoginPage() {
           />
         </div>
         <div>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password">Password</Label>
-            <Link href="/auth/forgot-password" className="text-xs font-medium text-primary">
-              Forgot password?
-            </Link>
-          </div>
-          <Input
+          <Label htmlFor="password">Password</Label>
+          <PasswordInput
             id="password"
-            type="password"
             autoComplete="current-password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          <div className="mt-1.5 text-right">
+            <Link href="/auth/forgot-password" className="text-xs font-medium text-primary">
+              Forgot password?
+            </Link>
+          </div>
         </div>
         <Button type="submit" size="lg" className="w-full" disabled={busy}>
           {busy ? "Signing in…" : "Sign in"}

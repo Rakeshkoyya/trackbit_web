@@ -6,8 +6,8 @@ import { toast } from "sonner";
 
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useAuth } from "@/contexts/auth-context";
 import { ApiError } from "@/lib/api-client";
 import { authApi } from "@/lib/auth-api";
@@ -46,9 +46,8 @@ export function ResetClient({ token }: { token: string }) {
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
           <Label htmlFor="pw">New password</Label>
-          <Input
+          <PasswordInput
             id="pw"
-            type="password"
             autoComplete="new-password"
             required
             value={pw}
@@ -57,9 +56,8 @@ export function ResetClient({ token }: { token: string }) {
         </div>
         <div>
           <Label htmlFor="confirm">Confirm password</Label>
-          <Input
+          <PasswordInput
             id="confirm"
-            type="password"
             autoComplete="new-password"
             required
             value={confirm}

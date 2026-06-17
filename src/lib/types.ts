@@ -141,8 +141,9 @@ export interface Member {
 }
 
 // ---- Members: bulk create + admin reset ----
+// No name: bulk staff set their own name on first login (until then the display
+// name defaults to the username server-side).
 export interface BulkMemberInput {
-  name: string;
   username: string;
   password: string;
   role: OrgRole;
@@ -161,6 +162,12 @@ export interface BulkMemberResult {
 export interface BulkMembersResult {
   results: BulkMemberResult[];
   created: number;
+}
+
+export interface UsernameCheck {
+  username: string; // normalized form the server would store
+  available: boolean;
+  error: "username_taken" | "invalid_username" | null;
 }
 
 export interface AdminResetResult {

@@ -14,7 +14,8 @@ interface AuthState {
   login: (identifier: string, password: string) => Promise<void>;
   register: (payload: RegisterOrgPayload) => Promise<void>;
   consumeSession: (session: Session) => void;
-  setPassword: (password: string) => Promise<void>;
+  setPassword: (password: string, name?: string) => Promise<void>;
+  updateProfile: (name: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -75,9 +76,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [consumeSession],
   );
 
-  const setPassword = useCallback(async (password: string) => {
-    await authApi.setPassword(password);
+  const setPassword = useCallback(async (password: string, name?: string) => {
+    await authApi.setPassword(password, name);
     setMustSetPassword(false);
+    // Reflect the new name (and cleared flag) locally — set-password returns no
+    // session, so patch the cached `me` instead of refetching.
+    const trimmed = name?.trim();
+    setMe((prev) =>
+      prev
+        ? {
+            ...prev,
+            must_set_password: false,
+            user: { ...prev.user, name: trimmed || prev.user.name },
+          }
+        : prev,
+    );
+  }, []);
+
+  const updateProfile = useCallback(async (name: string) => {
+    const data = await authApi.updateProfile(name);
+    setMe(data);
   }, []);
 
   const logout = useCallback(() => {
@@ -89,7 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ me, loading, mustSetPassword, login, register, consumeSession, setPassword, logout }}
+      value={{ me, loading, mustSetPassword, login, register, consumeSession, setPassword, updateProfile, logout }}
     >
       {children}
     </AuthContext.Provider>

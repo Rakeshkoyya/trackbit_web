@@ -67,7 +67,7 @@ export function SettingsScreen() {
   return (
     <div className="max-w-2xl">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Organization settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">Organization & billing.</p>
       </header>
 

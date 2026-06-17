@@ -4,7 +4,6 @@ import {
   Home,
   LayoutGrid,
   type LucideIcon,
-  Settings,
   Users,
 } from "lucide-react";
 
@@ -22,11 +21,11 @@ export const memberNav: NavItem[] = [
   { label: "Done", href: "/done", icon: CheckCircle2 },
 ];
 
-// Appended for admins (Settings arrives in P4).
+// Appended for admins. Settings lives in the account menu (avatar popover),
+// not the primary nav.
 export const adminNav: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: BarChart3 },
   { label: "Members", href: "/members", icon: Users, tour: "nav-members" },
-  { label: "Settings", href: "/settings", icon: Settings },
 ];
 
 export function navForRole(role: string | undefined): NavItem[] {

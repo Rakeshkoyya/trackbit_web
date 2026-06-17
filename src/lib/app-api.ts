@@ -23,6 +23,7 @@ import type {
   RecurringTemplate,
   Task,
   TaskDetail,
+  UsernameCheck,
 } from "@/lib/types";
 
 export interface CreateTaskInput {
@@ -129,12 +130,16 @@ export const appApi = {
   // Members
   members: () => api.get<{ members: Member[] }>("/org/members"),
   inviteMember: (body: { name: string; email: string; role: string }) =>
-    api.post<{ user_id: string; name: string; role: string; invite_url: string }>(
+    api.post<{ user_id: string; name: string; role: string; invite_url: string; pending: boolean }>(
       "/org/members/invite",
-      { ...body, mode: "email_invite" },
+      // invite_link: return a shareable link the admin sends themselves (no email
+      // is dispatched), per the user's "show me the link" flow.
+      { ...body, mode: "invite_link" },
     ),
   bulkAddMembers: (members: BulkMemberInput[]) =>
     api.post<BulkMembersResult>("/org/members/bulk", { members }),
+  checkUsername: (username: string) =>
+    api.get<UsernameCheck>(`/org/members/username-available?username=${encodeURIComponent(username)}`),
   resetMemberPassword: (user_id: string, password?: string) =>
     api.post<AdminResetResult>(`/org/members/${user_id}/reset-password`, {
       password: password ?? null,

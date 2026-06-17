@@ -15,8 +15,11 @@ export const authApi = {
   login: (identifier: string, password: string) =>
     api.post<Session>("/auth/login", { identifier, password }, false),
   verifyToken: (token: string) => api.post<Session>("/auth/verify", { token }, false),
-  setPassword: (password: string) =>
-    api.post<{ message: string }>("/auth/set-password", { password }),
+  setPassword: (password: string, name?: string) =>
+    api.post<{ message: string }>("/auth/set-password", { password, name: name || null }),
+  updateProfile: (name: string) => api.patch<Me>("/auth/me", { name }),
+  changePassword: (current_password: string, new_password: string) =>
+    api.post<{ message: string }>("/auth/change-password", { current_password, new_password }),
   forgotPassword: (email: string) =>
     api.post<{ message: string }>("/auth/forgot-password", { email }, false),
   resetPassword: (token: string, password: string) =>
