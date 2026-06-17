@@ -1,11 +1,12 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, Plus, Share2, Shield, UserMinus } from "lucide-react";
+import { Plus, Shield, UserMinus, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { AuthGuard } from "@/components/auth/auth-guard";
+import { BulkAddSheet } from "@/components/members/bulk-add-sheet";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,51 +32,24 @@ function timeAgo(iso: string | null): string {
 function InviteSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const qc = useQueryClient();
   const [name, setName] = useState("");
-  const [contact, setContact] = useState("");
+  const [email, setEmail] = useState("");
   const [role, setRole] = useState<"member" | "admin">("member");
-  const [link, setLink] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [sent, setSent] = useState(false);
 
   const invite = useMutation({
-    mutationFn: () => {
-      const isEmail = contact.includes("@");
-      return appApi.inviteMember({
-        name: name.trim(),
-        email: isEmail ? contact.trim() : undefined,
-        phone: isEmail ? undefined : contact.trim(),
-        role,
-        mode: "invite_link",
-      });
-    },
-    onSuccess: (res) => {
-      setLink(res.invite_url);
+    mutationFn: () => appApi.inviteMember({ name: name.trim(), email: email.trim(), role }),
+    onSuccess: () => {
+      setSent(true);
       qc.invalidateQueries({ queryKey: ["members"] });
     },
-    onError: (e) => showApiError(e, "Could not add member"),
+    onError: (e) => showApiError(e, "Could not invite"),
   });
 
   function reset() {
     setName("");
-    setContact("");
+    setEmail("");
     setRole("member");
-    setLink(null);
-    setCopied(false);
-  }
-
-  async function copy() {
-    if (!link) return;
-    await navigator.clipboard.writeText(link);
-    setCopied(true);
-    toast.success("Link copied");
-  }
-
-  async function share() {
-    if (!link) return;
-    if (navigator.share) {
-      await navigator.share({ title: "Join us on TrackBit", url: link }).catch(() => {});
-    } else {
-      copy();
-    }
+    setSent(false);
   }
 
   return (
@@ -85,14 +59,14 @@ function InviteSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: 
         if (!v) reset();
         onOpenChange(v);
       }}
-      title="Add member"
+      title="Invite by email"
     >
-      {!link ? (
+      {!sent ? (
         <form
           className="space-y-4"
           onSubmit={(e) => {
             e.preventDefault();
-            if (name.trim() && contact.trim()) invite.mutate();
+            if (name.trim() && email.trim()) invite.mutate();
           }}
         >
           <div>
@@ -100,13 +74,14 @@ function InviteSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: 
             <Input id="m-name" autoFocus required value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div>
-            <Label htmlFor="m-contact">Phone or email</Label>
+            <Label htmlFor="m-email">Email</Label>
             <Input
-              id="m-contact"
+              id="m-email"
+              type="email"
               required
-              placeholder="+91… or name@email.com"
-              value={contact}
-              onChange={(e) => setContact(e.target.value)}
+              placeholder="name@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           <div>
@@ -127,28 +102,18 @@ function InviteSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: 
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="submit" disabled={invite.isPending || !name.trim() || !contact.trim()}>
-              {invite.isPending ? "Adding…" : "Add & get link"}
+            <Button type="submit" disabled={invite.isPending || !name.trim() || !email.trim()}>
+              {invite.isPending ? "Sending…" : "Send invite"}
             </Button>
           </div>
         </form>
       ) : (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            {name} is added. Share this link so they can open TrackBit — no password needed.
+            Invite sent to {email}. They&apos;ll get an email link to set a password and sign in.
           </p>
-          <div className="break-all rounded-md border border-border bg-muted px-3 py-2 text-xs">{link}</div>
-          <div className="flex gap-2">
-            <Button onClick={copy} className="flex-1">
-              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              {copied ? "Copied" : "Copy link"}
-            </Button>
-            <Button variant="outline" onClick={share}>
-              <Share2 className="h-4 w-4" /> Share
-            </Button>
-          </div>
           <Button variant="ghost" className="w-full" onClick={reset}>
-            <Plus className="h-4 w-4" /> Add another
+            <Plus className="h-4 w-4" /> Invite another
           </Button>
         </div>
       )}
@@ -159,6 +124,7 @@ function InviteSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: 
 function MembersInner() {
   const qc = useQueryClient();
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const { data } = useQuery({ queryKey: ["members"], queryFn: appApi.members });
 
   const changeRole = useMutation({
@@ -181,6 +147,29 @@ function MembersInner() {
     },
     onError: (e) => toast.error(e instanceof ApiError ? e.message : "Could not remove"),
   });
+  const resetPw = useMutation({
+    mutationFn: ({ m, password }: { m: Member; password?: string }) =>
+      appApi.resetMemberPassword(m.user_id, password),
+    onSuccess: (res) => {
+      if (res.mode === "link_sent") toast.success("Reset link sent");
+      else toast.success(`Temp password set: ${res.password}`);
+    },
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : "Could not reset"),
+  });
+
+  function onReset(m: Member) {
+    if (m.email) {
+      resetPw.mutate({ m });
+      return;
+    }
+    const pw = window.prompt(`New temporary password for ${m.name} (min 8 chars):`);
+    if (pw === null) return;
+    if (pw.length < 8) {
+      toast.error("Password must be at least 8 characters.");
+      return;
+    }
+    resetPw.mutate({ m, password: pw });
+  }
 
   const members = data?.members ?? [];
 
@@ -188,9 +177,14 @@ function MembersInner() {
     <div>
       <header className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">Members ({members.length})</h1>
-        <Button size="sm" onClick={() => setInviteOpen(true)}>
-          <Plus className="h-4 w-4" /> Add
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setBulkOpen(true)}>
+            <Users className="h-4 w-4" /> Bulk add
+          </Button>
+          <Button size="sm" onClick={() => setInviteOpen(true)}>
+            <Plus className="h-4 w-4" /> Invite
+          </Button>
+        </div>
       </header>
 
       <div className="space-y-2">
@@ -205,12 +199,16 @@ function MembersInner() {
                     <Shield className="h-3 w-3" /> admin
                   </Badge>
                 ) : null}
+                {m.pending ? <Badge className="ml-2">pending</Badge> : null}
               </p>
               <p className="truncate text-xs text-muted-foreground">
-                {m.email || m.phone || "no contact"} · active {timeAgo(m.last_active_at)}
+                {m.email || m.username || m.phone || "no contact"} · active {timeAgo(m.last_active_at)}
               </p>
             </div>
             <div className="flex shrink-0 gap-1">
+              <Button variant="ghost" size="sm" onClick={() => onReset(m)}>
+                Reset password
+              </Button>
               <Button variant="ghost" size="sm" onClick={() => changeRole.mutate(m)}>
                 {m.role === "admin" ? "Make member" : "Make admin"}
               </Button>
@@ -228,6 +226,7 @@ function MembersInner() {
       </div>
 
       <InviteSheet open={inviteOpen} onOpenChange={setInviteOpen} />
+      <BulkAddSheet open={bulkOpen} onOpenChange={setBulkOpen} />
     </div>
   );
 }
