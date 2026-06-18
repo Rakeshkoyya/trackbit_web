@@ -3,11 +3,13 @@
 # TrackBit Web — production image (Next.js standalone output).
 # Build context: the repo root (trackbit_web/). Built by Dokploy from this Dockerfile.
 #
-# IMPORTANT: NEXT_PUBLIC_* values are inlined into the browser bundle at BUILD
-# time, not read at runtime. So the API URL must be passed as a build arg in
-# Dokploy (Build Args), e.g.:
-#     NEXT_PUBLIC_API_BASE_URL=https://api.your-domain.com/api/v1
-# Setting it only as a runtime env var will NOT change the compiled bundle.
+# NEXT_PUBLIC_* is normally inlined at BUILD time, which makes a Docker image
+# hard to repoint at a different backend. To keep this image runtime-
+# configurable, we build with a sentinel value and swap it for the real URL on
+# container start (see docker-entrypoint.sh). So in your platform you just set:
+#     NEXT_PUBLIC_API_BASE_URL=https://api.your-domain.com/api/v1   (or http://IP:PORT/api/v1)
+# as a normal ENVIRONMENT variable and restart — no rebuild needed.
+# (Passing it as a --build-arg still works and takes precedence.)
 
 # ---- deps: install node_modules from the lock file ----
 FROM node:22-alpine AS deps
@@ -22,7 +24,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1
+# Default to a sentinel so the value can be injected at runtime by the
+# entrypoint. Pass a real --build-arg here to bake it in instead.
+ARG NEXT_PUBLIC_API_BASE_URL=APP_RUNTIME_API_BASE_URL
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
@@ -45,7 +49,12 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Runtime API-URL injector (swaps the build sentinel for the real value).
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 USER nextjs
 EXPOSE 3000
 
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["node", "server.js"]
