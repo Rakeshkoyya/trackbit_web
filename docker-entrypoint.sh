@@ -10,20 +10,27 @@ set -e
 # here, on container start. Result: set NEXT_PUBLIC_API_BASE_URL in your
 # platform's env vars and just restart — no rebuild, no build args.
 #
-# (If the image was built WITH a real --build-arg, no sentinel is present and
-# this is a harmless no-op — the baked value wins.)
+# A marker file records the value last injected, so this is correct even when
+# the SAME container is restarted with a *changed* URL (we replace the previous
+# value, not just the original sentinel). On a fresh container the marker is
+# absent and we replace the build-time sentinel.
 # ─────────────────────────────────────────────────────────────────────────
 
 : "${NEXT_PUBLIC_API_BASE_URL:=http://localhost:8000/api/v1}"
 
 SENTINEL="APP_RUNTIME_API_BASE_URL"
+MARKER="/app/.next/.api_base_injected"
+TARGET="$NEXT_PUBLIC_API_BASE_URL"
 
-if [ "$NEXT_PUBLIC_API_BASE_URL" != "$SENTINEL" ]; then
-  echo "[entrypoint] injecting API base URL: ${NEXT_PUBLIC_API_BASE_URL}"
-  # Only the compiled output under .next contains the sentinel. Use '|' as the
-  # sed delimiter so the URL's slashes don't need escaping.
+CURRENT="$SENTINEL"
+[ -f "$MARKER" ] && CURRENT="$(cat "$MARKER")"
+
+if [ "$TARGET" != "$CURRENT" ]; then
+  echo "[entrypoint] setting API base URL: ${TARGET}"
+  # '|' as the sed delimiter so the URL's slashes don't need escaping.
   find /app/.next -type f \( -name "*.js" -o -name "*.json" -o -name "*.html" \) \
-    -exec sed -i "s|${SENTINEL}|${NEXT_PUBLIC_API_BASE_URL}|g" {} + 2>/dev/null || true
+    -exec sed -i "s|${CURRENT}|${TARGET}|g" {} + 2>/dev/null || true
+  echo "$TARGET" > "$MARKER" 2>/dev/null || true
 fi
 
 exec "$@"
