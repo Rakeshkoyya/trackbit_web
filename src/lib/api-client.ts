@@ -5,8 +5,15 @@
  * - Surfaces the backend's structured error envelope { error: { code, message } }.
  */
 
-const API_BASE =
+// Normalize the configured base URL so a stray trailing or duplicated slash in
+// the env value (e.g. ".../:8000//api/v1") can't produce "//api/v1" and 404.
+// Strip trailing slashes, then collapse runs of slashes except in the scheme.
+const RAW_API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+const API_BASE = RAW_API_BASE.replace(/\/+$/, "").replace(
+  /(https?:\/\/)|\/{2,}/g,
+  (_match, scheme) => scheme ?? "/",
+);
 
 const ACCESS_KEY = "trackbit_access";
 const REFRESH_KEY = "trackbit_refresh";
