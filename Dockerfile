@@ -11,14 +11,17 @@
 # as a normal ENVIRONMENT variable and restart — no rebuild needed.
 # (Passing it as a --build-arg still works and takes precedence.)
 
-# ---- deps: install node_modules from the lock file ----
-# node:24 bundles npm 11, matching the npm that writes package-lock.json locally.
-# (node:22 ships npm 10, which rejects the npm-11 lockfile — `npm ci` EUSAGE.)
+# ---- deps: install node_modules ----
+# Use `npm install`, not `npm ci`. package-lock.json is generated on Windows,
+# which omits Linux-only optional native deps (Tailwind v4 `oxide`'s
+# wasm32-wasi @emnapi subtree, sharp's linux builds). On alpine, strict `npm ci`
+# aborts on those ("Missing @emnapi/* from lock file"); `npm install` reconciles
+# the lock and installs the full tree. (node:24 bundles npm 11.)
 FROM node:24-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install --no-audit --no-fund
 
 # ---- builder: compile the Next.js app ----
 FROM node:24-alpine AS builder
