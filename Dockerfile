@@ -12,14 +12,16 @@
 # (Passing it as a --build-arg still works and takes precedence.)
 
 # ---- deps: install node_modules from the lock file ----
-FROM node:22-alpine AS deps
+# node:24 bundles npm 11, matching the npm that writes package-lock.json locally.
+# (node:22 ships npm 10, which rejects the npm-11 lockfile — `npm ci` EUSAGE.)
+FROM node:24-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
 # ---- builder: compile the Next.js app ----
-FROM node:22-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -33,7 +35,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # ---- runner: minimal runtime image ----
-FROM node:22-alpine AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
