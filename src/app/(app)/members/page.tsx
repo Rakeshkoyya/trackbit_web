@@ -29,20 +29,23 @@ function timeAgo(iso: string | null): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-/** Email invite → returns a shareable link the admin sends themselves. */
+/** Email invite → emails the join link to the invitee, with a copyable fallback link. */
 function InvitePanel() {
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"member" | "admin">("member");
-  const [result, setResult] = useState<{ name: string; invite_url: string; pending: boolean } | null>(
-    null,
-  );
+  const [result, setResult] = useState<{
+    name: string;
+    email: string;
+    invite_url: string;
+    pending: boolean;
+  } | null>(null);
 
   const invite = useMutation({
     mutationFn: () => appApi.inviteMember({ name: name.trim(), email: email.trim(), role }),
     onSuccess: (res) => {
-      setResult({ name: res.name, invite_url: res.invite_url, pending: res.pending });
+      setResult({ name: res.name, email: email.trim(), invite_url: res.invite_url, pending: res.pending });
       qc.invalidateQueries({ queryKey: ["members"] });
     },
     onError: (e) => showApiError(e, "Could not invite"),
@@ -59,10 +62,10 @@ function InvitePanel() {
     return (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{result.name}</span> was added to your
-          organization. Share this link so they can{" "}
-          {result.pending ? "set a password and sign in" : "sign in"} — paste it into WhatsApp, SMS,
-          or your own email.
+          <span className="font-medium text-foreground">{result.name}</span> was added and we emailed
+          an invite to <span className="font-medium text-foreground">{result.email}</span>. If it
+          doesn’t arrive, share this link so they can{" "}
+          {result.pending ? "set a password and sign in" : "sign in"}:
         </p>
         <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
           <span className="min-w-0 flex-1 truncate text-xs">{result.invite_url}</span>
@@ -127,7 +130,7 @@ function InvitePanel() {
       </div>
       <div className="flex justify-end gap-2 pt-2">
         <Button type="submit" disabled={invite.isPending || !name.trim() || !email.trim()}>
-          {invite.isPending ? "Creating…" : "Create invite link"}
+          {invite.isPending ? "Sending…" : "Send invite"}
         </Button>
       </div>
     </form>
