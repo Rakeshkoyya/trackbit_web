@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { BoardMobile } from "@/components/boards/board-mobile";
 import { TaskTable, type ColumnKey, type GroupBy } from "@/components/boards/board-table";
 import { useCelebration } from "@/components/celebration/celebration-provider";
 import { MondayRecap } from "@/components/history/monday-recap";
@@ -125,6 +126,25 @@ export default function HomePage() {
     onSettled: () => refreshTables(),
   });
 
+  const claim = useMutation({
+    mutationFn: (row: BoardRow) => {
+      const id = instanceId(row);
+      if (!id) return Promise.reject(new Error("Not actionable today"));
+      return appApi.claimTask(id);
+    },
+    onMutate: (row) => {
+      const snap = snapshotRowCaches(qc);
+      patchRowEverywhere(qc, row.id, { assignee: me ? { id: me.user.id, name: me.user.name } : null });
+      return { snap };
+    },
+    onSuccess: () => toast.success("Claimed — it's yours"),
+    onError: (e, _row, ctx) => {
+      restoreRowCaches(qc, ctx?.snap);
+      toast.error(e instanceof ApiError ? e.message : "Already taken");
+    },
+    onSettled: () => refreshTables(),
+  });
+
   function openRow(row: BoardRow) {
     router.push(row.kind === "recurring" ? `/recurring/${row.id}` : `/task/${row.id}`);
   }
@@ -208,19 +228,34 @@ export default function HomePage() {
           />
         )
       ) : (
-        <TaskTable
-          rows={rows}
-          groupBy={groupBy}
-          columns={columns}
-          sortBy={onBoardTab ? "created" : "urgency"}
-          showBoard={!onBoardTab}
-          groupDefs={onBoardTab ? boardTable.data?.groups : undefined}
-          addContext={onBoardTab ? { boardId: tab } : undefined}
-          hideEmptyGroups
-          onComplete={(r) => complete.mutate(r)}
-          onReopen={(r) => reopen.mutate(r)}
-          onOpen={openRow}
-        />
+        <>
+          {/* ── Desktop: Monday-style table ── */}
+          <div className="hidden lg:block">
+            <TaskTable
+              rows={rows}
+              groupBy={groupBy}
+              columns={columns}
+              sortBy={onBoardTab ? "created" : "urgency"}
+              showBoard={!onBoardTab}
+              groupDefs={onBoardTab ? boardTable.data?.groups : undefined}
+              addContext={onBoardTab ? { boardId: tab } : undefined}
+              hideEmptyGroups
+              onComplete={(r) => complete.mutate(r)}
+              onReopen={(r) => reopen.mutate(r)}
+              onOpen={openRow}
+            />
+          </div>
+
+          {/* ── Mobile: simple checkable list (matches the board screen) ── */}
+          <div className="lg:hidden">
+            <BoardMobile
+              rows={rows}
+              onComplete={(r) => complete.mutate(r)}
+              onClaim={(r) => claim.mutate(r)}
+              onOpen={openRow}
+            />
+          </div>
+        </>
       )}
 
       {/* Floating create button */}
