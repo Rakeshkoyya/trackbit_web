@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
@@ -14,6 +15,8 @@ interface AuthState {
   login: (identifier: string, password: string) => Promise<void>;
   register: (payload: RegisterOrgPayload) => Promise<void>;
   consumeSession: (session: Session) => void;
+  switchOrg: (orgId: string) => Promise<void>;
+  createOrg: (orgName: string, timezone: string) => Promise<void>;
   setPassword: (password: string, name?: string) => Promise<void>;
   updateProfile: (name: string) => Promise<void>;
   logout: () => void;
@@ -22,11 +25,18 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null);
 
 function sessionToMe(s: Session): Me {
-  return { org_role: s.org_role, must_set_password: s.must_set_password, user: s.user, org: s.org };
+  return {
+    org_role: s.org_role,
+    must_set_password: s.must_set_password,
+    user: s.user,
+    org: s.org,
+    orgs: s.orgs,
+  };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [me, setMe] = useState<Me | null>(null);
   const [mustSetPassword, setMustSetPassword] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -76,6 +86,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [consumeSession],
   );
 
+  // Switching org (or creating one and landing in it) returns a fresh session
+  // scoped to the new org. Swap tokens, drop all cached query data (keys like
+  // ["members"]/["boards"] are org-agnostic, so they'd otherwise show stale rows
+  // from the previous org), then reload Home in the new org.
+  const applySwitchedSession = useCallback(
+    (session: Session) => {
+      tokenStore.set(session.access_token, session.refresh_token);
+      queryClient.clear();
+      setMe(sessionToMe(session));
+      setMustSetPassword(session.must_set_password);
+      router.replace("/home");
+    },
+    [queryClient, router],
+  );
+
+  const switchOrg = useCallback(
+    async (orgId: string) => {
+      applySwitchedSession(await authApi.switchOrg(orgId));
+    },
+    [applySwitchedSession],
+  );
+
+  const createOrg = useCallback(
+    async (orgName: string, timezone: string) => {
+      applySwitchedSession(await authApi.createOrg(orgName, timezone));
+    },
+    [applySwitchedSession],
+  );
+
   const setPassword = useCallback(async (password: string, name?: string) => {
     await authApi.setPassword(password, name);
     setMustSetPassword(false);
@@ -107,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ me, loading, mustSetPassword, login, register, consumeSession, setPassword, updateProfile, logout }}
+      value={{ me, loading, mustSetPassword, login, register, consumeSession, switchOrg, createOrg, setPassword, updateProfile, logout }}
     >
       {children}
     </AuthContext.Provider>
