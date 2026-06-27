@@ -88,6 +88,7 @@ export interface BoardListItem {
   id: string;
   name: string;
   visibility: "public" | "private";
+  task_scope: "all" | "assigned";
   category: "tasks" | "checklist";
   done_today: number;
   total_today: number;
@@ -110,6 +111,7 @@ export interface Board {
   id: string;
   name: string;
   visibility: "public" | "private";
+  task_scope: "all" | "assigned";
   category: "tasks" | "checklist";
   owner_id: string;
   archived: boolean;

@@ -142,6 +142,33 @@ export function BoardSettingsSheet({
           ) : null}
         </div>
 
+        <div>
+          <Label>Who sees tasks</Label>
+          <div className="flex gap-2">
+            {(
+              [
+                ["all", "Everyone"],
+                ["assigned", "Only assignee"],
+              ] as const
+            ).map(([v, label]) => (
+              <button
+                key={v}
+                onClick={() => v !== board.task_scope && save.mutate({ task_scope: v })}
+                className={`flex-1 rounded-md border px-3 py-2.5 text-sm ${
+                  board.task_scope === v ? "border-primary bg-accent" : "border-border"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            {board.task_scope === "assigned"
+              ? "Members see only tasks assigned to them. You (the owner) and admins still see everything, including the report. Nothing is unassigned by this change."
+              : "Everyone on the board sees every task."}
+          </p>
+        </div>
+
         {board.visibility === "private" ? (
           <div>
             <Label>Members ({board.members.length})</Label>

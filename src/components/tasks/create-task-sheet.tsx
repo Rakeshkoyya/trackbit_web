@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet } from "@/components/ui/sheet";
+import { useAuth } from "@/contexts/auth-context";
 import { appApi } from "@/lib/app-api";
 import { showApiError } from "@/lib/errors";
 import { PRIORITY } from "@/lib/format";
@@ -31,6 +32,7 @@ export function CreateTaskSheet({
   defaultBoardId?: string;
 }) {
   const qc = useQueryClient();
+  const { me } = useAuth();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
@@ -51,6 +53,13 @@ export function CreateTaskSheet({
 
   const allBoards = boards.data ? [...boards.data.my_boards, ...boards.data.other_public] : [];
   const effectiveBoard = boardId || defaultBoardId || allBoards[0]?.id || "";
+  const selectedBoard = allBoards.find((b) => b.id === effectiveBoard);
+  // On a privacy board, a regular member can only put a task on themselves.
+  const selfAssignOnly =
+    !!selectedBoard &&
+    selectedBoard.task_scope === "assigned" &&
+    !selectedBoard.is_owner &&
+    me?.org_role !== "admin";
 
   const categories = useQuery({
     queryKey: ["board-categories", effectiveBoard],
@@ -68,7 +77,8 @@ export function CreateTaskSheet({
 
   const create = useMutation({
     mutationFn: (): Promise<unknown> => {
-      const assignee_id = assignee === UNASSIGNED ? null : assignee;
+      // selfAssignOnly: let the backend auto-assign to the creator (send null).
+      const assignee_id = selfAssignOnly ? null : assignee === UNASSIGNED ? null : assignee;
       const cat = category.trim() || null;
       if (repeats) {
         return appApi.createTemplate({
@@ -231,19 +241,25 @@ export function CreateTaskSheet({
         </div>
         <div>
           <Label htmlFor="t-assignee">Assign</Label>
-          <select
-            id="t-assignee"
-            value={assignee}
-            onChange={(e) => setAssignee(e.target.value)}
-            className="h-11 w-full rounded-md border border-input bg-card px-3 text-sm"
-          >
-            <option value={UNASSIGNED}>Leave unassigned (anyone claims)</option>
-            {members.data?.members.map((m) => (
-              <option key={m.user_id} value={m.user_id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
+          {selfAssignOnly ? (
+            <p className="rounded-md border border-border bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground">
+              Assigned to you — this board only shows you your own tasks.
+            </p>
+          ) : (
+            <select
+              id="t-assignee"
+              value={assignee}
+              onChange={(e) => setAssignee(e.target.value)}
+              className="h-11 w-full rounded-md border border-input bg-card px-3 text-sm"
+            >
+              <option value={UNASSIGNED}>Leave unassigned (anyone claims)</option>
+              {members.data?.members.map((m) => (
+                <option key={m.user_id} value={m.user_id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {!repeats ? (
