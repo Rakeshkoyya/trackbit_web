@@ -5,9 +5,11 @@ import {
   Check,
   Clock,
   Copy,
+  Loader2,
   LogOut,
   Mail,
   Phone,
+  Plus,
   Settings,
   Sparkles,
   User as UserIcon,
@@ -20,6 +22,8 @@ import { toast } from "sonner";
 
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/auth-context";
 
 /**
@@ -31,9 +35,13 @@ import { useAuth } from "@/contexts/auth-context";
  * positioned element closed on outside-click / Escape — no new dependency.
  */
 export function AccountMenu() {
-  const { me, logout } = useAuth();
+  const { me, logout, switchOrg, createOrg } = useAuth();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [switchingId, setSwitchingId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [orgName, setOrgName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   // Close on click outside the menu or on Escape, only while it's open.
@@ -58,6 +66,37 @@ export function AccountMenu() {
   const { user, org, org_role } = me;
   const isAdmin = org_role === "admin";
   const secondary = user.email ?? user.username ?? user.phone ?? null;
+  // Orgs the user can switch into, excluding the current one. Empty => single-org
+  // user, so no switcher is shown (per requirement).
+  const otherOrgs = (me.orgs ?? []).filter((o) => o.id !== org.id);
+
+  async function handleSwitch(orgId: string) {
+    if (switchingId) return;
+    setSwitchingId(orgId);
+    try {
+      await switchOrg(orgId); // swaps tokens, clears cache, redirects to /home
+      setOpen(false);
+    } catch {
+      setSwitchingId(null);
+      toast.error("Couldn't switch organization");
+    }
+  }
+
+  async function handleCreateOrg(e: React.FormEvent) {
+    e.preventDefault();
+    const name = orgName.trim();
+    if (!name || submitting) return;
+    setSubmitting(true);
+    try {
+      await createOrg(name, "Asia/Kolkata");
+      setOpen(false);
+      setCreating(false);
+      setOrgName("");
+    } catch {
+      setSubmitting(false);
+      toast.error("Couldn't create organization");
+    }
+  }
 
   async function copy(label: string, value: string) {
     try {
@@ -158,6 +197,81 @@ export function AccountMenu() {
                 Upgrade to Pro
               </Link>
             )}
+
+            {/* Switch organization — only when the user belongs to more than one */}
+            {otherOrgs.length > 0 && (
+              <div className="mt-3 border-t border-border pt-3">
+                <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Switch to
+                </p>
+                <div className="space-y-0.5">
+                  {otherOrgs.map((o) => (
+                    <button
+                      key={o.id}
+                      type="button"
+                      role="menuitem"
+                      disabled={switchingId !== null}
+                      onClick={() => handleSwitch(o.id)}
+                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted disabled:opacity-60"
+                    >
+                      <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="min-w-0 flex-1 truncate">{o.name}</span>
+                      {switchingId === o.id ? (
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
+                      ) : (
+                        o.org_role === "admin" && <Badge tone="neutral">Admin</Badge>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Create a new organization */}
+            <div className="mt-3 border-t border-border pt-3">
+              {creating ? (
+                <form onSubmit={handleCreateOrg} className="space-y-2">
+                  <Input
+                    autoFocus
+                    value={orgName}
+                    onChange={(e) => setOrgName(e.target.value)}
+                    placeholder="New organization name"
+                    aria-label="New organization name"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={!orgName.trim() || submitting}
+                      className="flex-1"
+                    >
+                      {submitting ? "Creating…" : "Create"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setCreating(false);
+                        setOrgName("");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => setCreating(true)}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm font-medium text-primary transition-colors hover:bg-muted"
+                >
+                  <Plus className="h-4 w-4 shrink-0" />
+                  Create organization
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Shortcuts */}

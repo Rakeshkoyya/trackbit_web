@@ -132,9 +132,9 @@ export const appApi = {
   inviteMember: (body: { name: string; email: string; role: string }) =>
     api.post<{ user_id: string; name: string; role: string; invite_url: string; pending: boolean }>(
       "/org/members/invite",
-      // invite_link: return a shareable link the admin sends themselves (no email
-      // is dispatched), per the user's "show me the link" flow.
-      { ...body, mode: "invite_link" },
+      // email_invite: backend emails the join link to the invitee (Resend) AND
+      // returns the same link as a fallback the admin can share manually.
+      { ...body, mode: "email_invite" },
     ),
   bulkAddMembers: (members: BulkMemberInput[]) =>
     api.post<BulkMembersResult>("/org/members/bulk", { members }),

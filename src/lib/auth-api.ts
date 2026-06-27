@@ -25,4 +25,7 @@ export const authApi = {
   resetPassword: (token: string, password: string) =>
     api.post<Session>("/auth/reset-password", { token, password }, false),
   me: () => api.get<Me>("/auth/me"),
+  switchOrg: (orgId: string) => api.post<Session>("/auth/switch-org", { org_id: orgId }),
+  createOrg: (org_name: string, timezone: string) =>
+    api.post<Session>("/auth/orgs", { org_name, timezone }),
 };

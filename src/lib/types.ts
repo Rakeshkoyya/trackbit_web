@@ -17,6 +17,14 @@ export interface Org {
   plan: "free" | "pro";
 }
 
+// One org the signed-in user can switch into (includes the current one).
+export interface OrgSummary {
+  id: string;
+  name: string;
+  plan: "free" | "pro";
+  org_role: OrgRole;
+}
+
 export interface Session {
   access_token: string;
   refresh_token: string;
@@ -25,6 +33,7 @@ export interface Session {
   must_set_password: boolean;
   user: User;
   org: Org;
+  orgs: OrgSummary[];
 }
 
 export interface Me {
@@ -32,6 +41,7 @@ export interface Me {
   must_set_password: boolean;
   user: User;
   org: Org;
+  orgs: OrgSummary[];
 }
 
 // ---- Tasks / boards ----
