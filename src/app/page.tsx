@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Bell, Check, Hand, LayoutGrid, Sparkles } from "lucide-react";
 
+import { RedirectIfAuthed } from "@/components/auth/redirect-if-authed";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
@@ -33,6 +34,7 @@ const audiences = ["Schools", "Shops & sellers", "Clinics", "Agencies"];
 export default function LandingPage() {
   return (
     <div className="min-h-dvh">
+      <RedirectIfAuthed />
       {/* Nav */}
       <header className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
         <span className="text-lg font-semibold tracking-tight text-primary">TrackBit</span>
