@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
-import { tokenStore } from "@/lib/api-client";
+import { ApiError, tokenStore } from "@/lib/api-client";
 import { authApi, type RegisterOrgPayload } from "@/lib/auth-api";
 import type { Me, Session } from "@/lib/types";
 
@@ -55,8 +55,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setMe(data);
           setMustSetPassword(data.must_set_password);
         }
-      } catch {
-        tokenStore.clear();
+      } catch (err) {
+        // Only drop the session on a genuine auth failure (401 — refresh also
+        // failed). On a transient error (API down, network/CORS blip) keep the
+        // tokens so a later reload can recover instead of forcing a re-login.
+        if (err instanceof ApiError && err.status === 401) tokenStore.clear();
       } finally {
         if (!cancelled) setLoading(false);
       }
