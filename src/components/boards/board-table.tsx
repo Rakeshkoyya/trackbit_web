@@ -61,7 +61,7 @@ function Popover({
 
   return createPortal(
     <>
-      <div className="fixed inset-0 z-[55]" onClick={onClose} />
+      <div className="fixed inset-0 z-[55]" onClick={(e) =>{ e.stopPropagation(); onClose()}} />
       <div
         style={{ position: "fixed", ...pos }}
         className="z-[56] rounded-lg border border-border bg-card p-2 shadow-lg"
