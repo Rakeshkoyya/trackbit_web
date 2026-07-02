@@ -218,6 +218,7 @@ export function BoardView({ boardId }: { boardId: string }) {
                 addContext={{ boardId }}
                 onComplete={(r) => complete.mutate(r)}
                 onReopen={(r) => reopen.mutate(r)}
+                onRelease={() => {}}
                 onOpen={openRow}
               />
             ) : rows.length === 0 ? (
