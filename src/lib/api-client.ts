@@ -80,7 +80,15 @@ async function parse<T>(res: Response): Promise<T> {
   return data as T;
 }
 
-async function tryRefresh(): Promise<boolean> {
+// Single-flight refresh. Refresh tokens are single-use/rotating on the backend
+// (services/auth.py: the presented token is marked used and a new pair issued),
+// so concurrent 401s must NOT each call /auth/refresh — the first would rotate
+// the token and the rest would 401 on the now-spent token and clear the session,
+// logging the user out. Sharing one in-flight promise spends the token exactly
+// once; every caller awaits the same result and then retries with the new token.
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function performRefresh(): Promise<boolean> {
   const refresh = tokenStore.refresh;
   if (!refresh) return false;
   const res = await raw("/auth/refresh", {
@@ -95,6 +103,15 @@ async function tryRefresh(): Promise<boolean> {
   const data = await res.json();
   tokenStore.set(data.access_token, data.refresh_token);
   return true;
+}
+
+async function tryRefresh(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = performRefresh().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
 }
 
 export async function apiFetch<T>(path: string, opts: Options = {}): Promise<T> {

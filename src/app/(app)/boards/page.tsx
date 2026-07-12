@@ -21,16 +21,18 @@ export default function BoardsPage() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [visibility, setVisibility] = useState<"public" | "private">("public");
+  const [taskScope, setTaskScope] = useState<"all" | "assigned">("all");
 
   const { data, isLoading } = useQuery({ queryKey: ["boards"], queryFn: appApi.boards });
 
   const create = useMutation({
-    mutationFn: () => appApi.createBoard({ name: name.trim(), visibility }),
+    mutationFn: () => appApi.createBoard({ name: name.trim(), visibility, task_scope: taskScope }),
     onSuccess: (board) => {
       qc.invalidateQueries({ queryKey: ["boards"] });
       toast.success("Board created");
       setName("");
       setVisibility("public");
+      setTaskScope("all");
       setOpen(false);
       router.push(`/boards/${board.id}`);
     },
@@ -125,6 +127,33 @@ export default function BoardsPage() {
               {visibility === "public"
                 ? "Visible to the whole org; counts toward the org dashboard."
                 : "Visible only to members you add."}
+            </p>
+          </div>
+          <div>
+            <Label>Who sees tasks</Label>
+            <div className="flex gap-2">
+              {(
+                [
+                  ["all", "Everyone"],
+                  ["assigned", "Only assignee"],
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt[0]}
+                  type="button"
+                  onClick={() => setTaskScope(opt[0])}
+                  className={`flex-1 rounded-md border px-3 py-2.5 text-sm ${
+                    taskScope === opt[0] ? "border-primary bg-accent" : "border-border"
+                  }`}
+                >
+                  {opt[1]}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              {taskScope === "assigned"
+                ? "Members see only tasks assigned to them; you and admins still see everything."
+                : "Everyone on the board sees every task."}
             </p>
           </div>
           <div className="flex justify-end gap-2 pt-2">

@@ -121,6 +121,9 @@ export function BoardView({ boardId }: { boardId: string }) {
   }
 
   const b = board.data;
+  // Privacy board + not owner/admin: backend already returns only the member's
+  // own tasks and 404s the report, so drop the now-meaningless controls.
+  const restricted = b.task_scope === "assigned" && !b.can_manage;
   const allRows = table.data?.rows ?? [];
   const myId = me?.user.id;
   const rows =
@@ -148,14 +151,16 @@ export function BoardView({ boardId }: { boardId: string }) {
             <h1 className="text-2xl font-semibold tracking-tight">{b.name}</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => router.push(`/boards/${boardId}/report`)}
-              aria-label="Board report"
-            >
-              <BarChart3 className="h-5 w-5" />
-            </Button>
+            {!restricted ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => router.push(`/boards/${boardId}/report`)}
+                aria-label="Board report"
+              >
+                <BarChart3 className="h-5 w-5" />
+              </Button>
+            ) : null}
             {b.can_manage ? (
               <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)} aria-label="Board settings">
                 <Settings2 className="h-5 w-5" />
@@ -188,12 +193,14 @@ export function BoardView({ boardId }: { boardId: string }) {
           {/* ── Desktop: Monday-style table / Kanban ── */}
           <div className="hidden lg:block">
             <div className="mb-3 flex items-center gap-2">
-              <Dropdown
-                label="Show"
-                value={scope}
-                options={[["all", "Everyone"], ["mine", "Mine + unclaimed"]]}
-                onChange={(v) => setScope(v as Scope)}
-              />
+              {!restricted ? (
+                <Dropdown
+                  label="Show"
+                  value={scope}
+                  options={[["all", "Everyone"], ["mine", "Mine + unclaimed"]]}
+                  onChange={(v) => setScope(v as Scope)}
+                />
+              ) : null}
               <Dropdown
                 label="Group by"
                 value={groupBy}
@@ -215,6 +222,7 @@ export function BoardView({ boardId }: { boardId: string }) {
                 groupBy={groupBy}
                 columns={["person", "due", "priority"]}
                 groupDefs={table.data?.groups}
+                canAssignPerson={!restricted}
                 addContext={{ boardId }}
                 onComplete={(r) => complete.mutate(r)}
                 onReopen={(r) => reopen.mutate(r)}

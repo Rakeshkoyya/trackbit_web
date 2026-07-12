@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Plus, Search, Shield, UserMinus } from "lucide-react";
+import { Copy, MoreVertical, Plus, Search, Shield, UserMinus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -176,6 +176,7 @@ function AddMemberSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (
 function MembersInner() {
   const qc = useQueryClient();
   const [addOpen, setAddOpen] = useState(false);
+  const [actionsFor, setActionsFor] = useState<Member | null>(null);
   const [query, setQuery] = useState("");
   const { data } = useQuery({ queryKey: ["members"], queryFn: appApi.members });
 
@@ -274,7 +275,9 @@ function MembersInner() {
                   {m.email || m.username || m.phone || "no contact"} · active {timeAgo(m.last_active_at)}
                 </p>
               </div>
-              <div className="flex shrink-0 gap-1">
+              {/* Desktop: inline actions. Mobile: collapse into a kebab → sheet so
+                  the buttons don't crowd out the member name (narrow screens). */}
+              <div className="hidden shrink-0 gap-1 lg:flex">
                 <Button variant="ghost" size="sm" onClick={() => onReset(m)}>
                   Reset password
                 </Button>
@@ -290,12 +293,67 @@ function MembersInner() {
                   <UserMinus className="h-4 w-4 text-danger" />
                 </Button>
               </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`Actions for ${m.name}`}
+                className="shrink-0 lg:hidden"
+                onClick={() => setActionsFor(m)}
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
             </div>
           ))}
         </div>
       )}
 
       <AddMemberSheet open={addOpen} onOpenChange={setAddOpen} />
+
+      {/* Mobile action menu — mirrors the desktop inline buttons. */}
+      <Sheet
+        open={actionsFor !== null}
+        onOpenChange={(v) => {
+          if (!v) setActionsFor(null);
+        }}
+        title={actionsFor?.name ?? "Member"}
+      >
+        {actionsFor ? (
+          <div className="space-y-2">
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => {
+                onReset(actionsFor);
+                setActionsFor(null);
+              }}
+            >
+              Reset password
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => {
+                changeRole.mutate(actionsFor);
+                setActionsFor(null);
+              }}
+            >
+              <Shield className="h-4 w-4" />
+              {actionsFor.role === "admin" ? "Make member" : "Make admin"}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start text-danger"
+              onClick={() => {
+                remove.mutate(actionsFor);
+                setActionsFor(null);
+              }}
+            >
+              <UserMinus className="h-4 w-4" />
+              Remove member
+            </Button>
+          </div>
+        ) : null}
+      </Sheet>
     </div>
   );
 }

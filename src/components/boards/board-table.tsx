@@ -87,6 +87,8 @@ export const TaskTable = forwardRef<TaskTableHandle, {
   sortBy?: SortBy;
   /** Show each task's board as a small tag — for the cross-board "My tasks" list. */
   showBoard?: boolean;
+  /** False on a privacy board for a non-owner: the person cell is read-only. */
+  canAssignPerson?: boolean;
   onComplete: (row: BoardRow) => void;
   onReopen: (row: BoardRow) => void;
   onOpen: (row: BoardRow) => void;
@@ -101,6 +103,7 @@ export const TaskTable = forwardRef<TaskTableHandle, {
   const groups = buildGroups(rows, groupBy, groupDefs, hideEmptyGroups, sortBy);
   const canAddRows = addContext != null && (groupBy === "category" || groupBy === "none");
   const boardId = addContext?.boardId;
+
   const rowProps = { columns, cols, groups: groupDefs, boardId, showBoard, onComplete, onReopen, onRelease, onOpen };
 
   const colHeader = (
@@ -250,6 +253,7 @@ function Row({
   groups,
   boardId,
   showBoard,
+  canAssignPerson = true,
   onComplete,
   onReopen,
   onRelease,
@@ -261,6 +265,7 @@ function Row({
   groups?: BoardGroup[];
   boardId?: string;
   showBoard?: boolean;
+  canAssignPerson?: boolean;
   onComplete: (row: BoardRow) => void;
   onReopen: (row: BoardRow) => void;
   onRelease: (row: BoardRow) => void;
@@ -303,7 +308,7 @@ function Row({
 
       {columns.includes("person") ? (
         <div className="min-w-0 pr-2" onClick={(e) => e.stopPropagation()}>
-          <AssigneeCell row={row} />
+          <AssigneeCell row={row} canAssign={canAssignPerson} />
         </div>
       ) : null}
 
@@ -407,7 +412,7 @@ function CheckButton({
 }
 
 /** Person column: avatar / add-person icon → member picker (search + list). */
-function AssigneeCell({ row }: { row: BoardRow }) {
+function AssigneeCell({ row, canAssign = true }: { row: BoardRow; canAssign?: boolean }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -432,7 +437,9 @@ function AssigneeCell({ row }: { row: BoardRow }) {
   });
 
   // Recurring rows carry the template's default assignee — change it in detail.
-  if (row.kind === "recurring") {
+  // Privacy boards (canAssign=false) render the assignee read-only too: a member
+  // can't reassign here, so don't offer the picker (the backend blocks it anyway).
+  if (row.kind === "recurring" || !canAssign) {
     return row.assignee ? (
       <span className="flex items-center gap-1.5 truncate text-sm">
         <Avatar name={row.assignee.name} /> <span className="truncate">{row.assignee.name}</span>

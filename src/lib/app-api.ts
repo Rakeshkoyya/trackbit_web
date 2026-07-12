@@ -54,8 +54,12 @@ export const appApi = {
   // Boards
   boards: () => api.get<BoardsList>("/boards"),
   board: (id: string) => api.get<Board>(`/boards/${id}`),
-  createBoard: (body: { name: string; visibility?: string; category?: string }) =>
-    api.post<Board>("/boards", body),
+  createBoard: (body: {
+    name: string;
+    visibility?: string;
+    task_scope?: string;
+    category?: string;
+  }) => api.post<Board>("/boards", body),
   updateBoard: (id: string, body: Record<string, unknown>) =>
     api.patch<Board>(`/boards/${id}`, body),
   deleteBoard: (id: string) => api.del<{ message: string }>(`/boards/${id}`),
