@@ -34,6 +34,9 @@ export default function HomePage() {
   const { me } = useAuth();
   const { onCompletion, showRitual } = useCelebration();
   const [tab, setTab] = useState<Tab>("mine");
+  const [showMode, setShowMode] = useState<"everyone" | "mine">("everyone");
+  const [homeGroupBy, setHomeGroupBy] = useState<GroupBy>("none");
+  const [boardGroupBy, setBoardGroupBy] = useState<GroupBy>("category");
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const { data: home } = useQuery({ queryKey: ["home"], queryFn: appApi.today });
@@ -144,6 +147,20 @@ export default function HomePage() {
     },
     onSettled: () => refreshTables(),
   });
+  const release = useMutation({
+  mutationFn: (row: BoardRow) => {
+    const id = instanceId(row);
+    if (!id) return Promise.reject(new Error("Not actionable today"));
+    return appApi.releaseTask(id);
+  },
+  onSuccess: () => {
+    toast.success("Task released");
+  },
+  onError: (e) => {
+    toast.error(e instanceof ApiError ? e.message : "Could not release");
+  },
+  onSettled: () => refreshTables(),
+  });
 
   function openRow(row: BoardRow) {
     router.push(row.kind === "recurring" ? `/recurring/${row.id}` : `/task/${row.id}`);
@@ -154,13 +171,13 @@ export default function HomePage() {
   // Rows + table config for the active tab.
   const onBoardTab = tab !== "mine";
   const rows: BoardRow[] = onBoardTab
-    ? (boardTable.data?.rows ?? []).filter((r) => !r.assignee || r.assignee.id === myId)
+    ? (boardTable.data?.rows ?? []).filter((r) =>
+        showMode === "mine" ? !r.assignee || r.assignee.id === myId : true,
+      )
     : (myTasks.data?.rows ?? []);
-  // My tasks = one flat, ungrouped list across all boards, ordered by urgency so
-  // the next thing to do is on top. Board tabs keep their category grouping.
-  const groupBy: GroupBy = onBoardTab ? "category" : "none";
   const columns: ColumnKey[] = onBoardTab ? ["person", "due", "priority"] : ["due", "priority"];
   const loading = onBoardTab ? boardTable.isLoading : myTasks.isLoading;
+  const currentGroupBy = onBoardTab ? boardGroupBy : homeGroupBy;
 
   return (
     <div>
@@ -179,6 +196,46 @@ export default function HomePage() {
       </div>
 
       {tab === "mine" ? <MondayRecap hist={hist} /> : null}
+
+      {onBoardTab && (
+        <div className="mb-4 flex gap-3">
+          <select
+            value={showMode}
+            onChange={(e) => setShowMode(e.target.value as "everyone" | "mine")}
+            className="rounded-md border border-border bg-background px-3 py-2"
+          >
+            <option value="everyone">Everyone</option>
+            <option value="mine">Mine</option>
+          </select>
+          <select
+            value={boardGroupBy}
+            onChange={(e) => setBoardGroupBy(e.target.value as GroupBy)}
+            className="rounded-md border border-border bg-background px-3 py-2"
+          >
+            <option value="category">Category</option>
+            <option value="none">None</option>
+            <option value="status">Status</option>
+            <option value="owner">Owner</option>
+            <option value="priority">Priority</option>
+          </select>
+        </div>
+      )}
+
+      {!onBoardTab && (
+        <div className="mb-4 flex gap-3">
+          <select
+            value={homeGroupBy}
+            onChange={(e) => setHomeGroupBy(e.target.value as GroupBy)}
+            className="rounded-md border border-border bg-background px-3 py-2"
+          >
+            <option value="none">None</option>
+            <option value="category">Category</option>
+            <option value="status">Status</option>
+            <option value="owner">Owner</option>
+            <option value="priority">Priority</option>
+          </select>
+        </div>
+      )}
 
       {/* Slim day-progress header */}
       <header className="mb-4">
@@ -233,7 +290,7 @@ export default function HomePage() {
           <div className="hidden lg:block">
             <TaskTable
               rows={rows}
-              groupBy={groupBy}
+              groupBy={currentGroupBy}
               columns={columns}
               sortBy={onBoardTab ? "created" : "urgency"}
               showBoard={!onBoardTab}
@@ -242,6 +299,7 @@ export default function HomePage() {
               hideEmptyGroups
               onComplete={(r) => complete.mutate(r)}
               onReopen={(r) => reopen.mutate(r)}
+              onRelease={(r) => release.mutate(r)}
               onOpen={openRow}
             />
           </div>
@@ -252,6 +310,7 @@ export default function HomePage() {
               rows={rows}
               onComplete={(r) => complete.mutate(r)}
               onClaim={(r) => claim.mutate(r)}
+              onRelease={(r) => release.mutate(r)}
               onOpen={openRow}
             />
           </div>

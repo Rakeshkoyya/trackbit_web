@@ -33,6 +33,7 @@ function colsFor(columns: ColumnKey[]): string {
   return parts.join(" ");
 }
 
+
 function gridStyle(cols: string): React.CSSProperties {
   return { display: "grid", gridTemplateColumns: cols, alignItems: "center" };
 }
@@ -61,7 +62,7 @@ function Popover({
 
   return createPortal(
     <>
-      <div className="fixed inset-0 z-[55]" onClick={onClose} />
+      <div className="fixed inset-0 z-[55]" onClick={(e) =>{ e.stopPropagation(); onClose()}} />
       <div
         style={{ position: "fixed", ...pos }}
         className="z-[56] rounded-lg border border-border bg-card p-2 shadow-lg"
@@ -92,7 +93,7 @@ export const TaskTable = forwardRef<TaskTableHandle, {
   onReopen: (row: BoardRow) => void;
   onOpen: (row: BoardRow) => void;
 }>(function TaskTable(
-  { rows, groupBy, columns = ["person", "due", "priority"], groupDefs, addContext, hideEmptyGroups, sortBy = "created", showBoard = false, canAssignPerson = true, onComplete, onReopen, onOpen },
+  { rows, groupBy, columns = ["person", "due", "priority"], groupDefs, addContext, hideEmptyGroups, sortBy = "created", showBoard = false, onComplete, onReopen, onRelease, onOpen },
   ref,
 ) {
   const firstAddRef = useRef<HTMLInputElement>(null);
@@ -102,7 +103,8 @@ export const TaskTable = forwardRef<TaskTableHandle, {
   const groups = buildGroups(rows, groupBy, groupDefs, hideEmptyGroups, sortBy);
   const canAddRows = addContext != null && (groupBy === "category" || groupBy === "none");
   const boardId = addContext?.boardId;
-  const rowProps = { columns, cols, groups: groupDefs, boardId, showBoard, canAssignPerson, onComplete, onReopen, onOpen };
+
+  const rowProps = { columns, cols, groups: groupDefs, boardId, showBoard, onComplete, onReopen, onRelease, onOpen };
 
   const colHeader = (
     <div
@@ -254,6 +256,7 @@ function Row({
   canAssignPerson = true,
   onComplete,
   onReopen,
+  onRelease,
   onOpen,
 }: {
   row: BoardRow;
@@ -265,6 +268,7 @@ function Row({
   canAssignPerson?: boolean;
   onComplete: (row: BoardRow) => void;
   onReopen: (row: BoardRow) => void;
+  onRelease: (row: BoardRow) => void;
   onOpen: (row: BoardRow) => void;
 }) {
   const done = row.status === "done";
@@ -320,7 +324,7 @@ function Row({
         </div>
       ) : null}
 
-      <RowMenu row={row} groups={groups} boardId={boardId} onOpen={onOpen} />
+      <RowMenu row={row} groups={groups} boardId={boardId} onOpen={onOpen} onRelease={onRelease} />
     </div>
   );
 }
@@ -511,11 +515,13 @@ function RowMenu({
   groups,
   boardId,
   onOpen,
+  onRelease,
 }: {
   row: BoardRow;
   groups?: BoardGroup[];
   boardId?: string;
   onOpen: (row: BoardRow) => void;
+  onRelease: (row: BoardRow) => void;
 }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -563,7 +569,16 @@ function RowMenu({
         >
           Open this task
         </button>
-
+        {row.assignee && row.status !== "done" ? (
+        <button
+           onClick={() => {
+             setOpen(false);
+             onRelease(row);
+            }}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted">
+            Release
+            </button>
+        ) : null}
         {groups && groups.length > 0 ? (
           <div className="mt-1 border-t border-border pt-1">
             <p className="px-2 py-1 text-[11px] uppercase tracking-wide text-muted-foreground">Move to group</p>

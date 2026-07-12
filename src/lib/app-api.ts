@@ -86,6 +86,8 @@ export const appApi = {
   completeTask: (id: string) => api.post<CompleteResult>(`/tasks/${id}/complete`),
   reopenTask: (id: string) => api.post<Task>(`/tasks/${id}/reopen`),
   claimTask: (id: string) => api.post<Task>(`/tasks/${id}/claim`),
+  releaseTask: (id: string) => 
+    api.post<Task>(`/tasks/${id}/release`),
   reassignTask: (id: string, to_user_id: string) =>
     api.post<Task>(`/tasks/${id}/reassign`, { to_user_id }),
   assignTask: (id: string, user_id: string | null) =>

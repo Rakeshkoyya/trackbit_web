@@ -21,7 +21,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={client}>
       <AuthProvider>{children}</AuthProvider>
-      <Toaster position="bottom-center" theme={theme} richColors closeButton />
+      <Toaster position="top-center" theme={theme} richColors  />
     </QueryClientProvider>
   );
 }

@@ -43,6 +43,14 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
     queryKey: ["task", taskId],
     queryFn: () => appApi.task(taskId),
   });
+  const { data: boards } = useQuery({
+    queryKey: ["boards"],
+    queryFn: () => appApi.boards(),
+  });
+  console.log("taskId =", taskId);
+  console.log("task =", task);
+
+
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["task", taskId] });
@@ -170,7 +178,7 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
           <InfoRow label="Status">
             <span className="flex items-center gap-2">
               <span className={cn("h-3 w-3 rounded-full", status.dot)} />
-              {status.label}
+            {status.label}
             </span>
           </InfoRow>
           <InfoRow label="Assignee">
@@ -190,19 +198,71 @@ export function TaskDetailView({ taskId }: { taskId: string }) {
             </div>
           </InfoRow>
           <InfoRow label="Due date">
-            {task.due_at
-              ? `${dayLabel(task.due_at)}${timeLabel(task.due_at) ? " · " + timeLabel(task.due_at) : ""}`
-              : <span className="text-muted-foreground">Anytime</span>}
+          <input
+            type="date"
+            value={task.due_at ? task.due_at.slice(0, 10) : ""}
+            onChange={(e) =>
+              save.mutate({
+               due_at: e.target.value
+                 ? new Date(e.target.value).toISOString()
+                 : null,
+              })
+            }
+            className="rounded-md border border-border bg-background px-2 py-1"/>
           </InfoRow>
-          <InfoRow label="Priority">
-            {task.priority > 0 ? (
-              <span className={cn("rounded px-2 py-0.5 text-xs font-medium", prio.cls)}>{prio.label}</span>
-            ) : <span className="text-muted-foreground">None</span>}
+        <InfoRow label="Priority">
+          <select
+            value={task.priority}
+            onChange={(e) =>
+            save.mutate({
+              priority: Number(e.target.value),
+            })
+          }
+          className="rounded-md border border-border bg-background px-2 py-1">
+          <option value={0}>None</option>
+          <option value={1}>Low</option>
+          <option value={2}>Medium</option>
+          <option value={3}>High</option>
+          </select>
+        </InfoRow>
+        <InfoRow label="Category">
+          <input
+            type="text"
+            value={task.category ?? ""}
+            onChange={(e) =>
+              save.mutate({
+                category: e.target.value,
+             })
+          }
+          placeholder="Enter category"
+          className="rounded-md border border-border bg-background px-2 py-1"/>
+        </InfoRow>
+          <InfoRow label="Board">
+            <select
+              value={task.board_id}
+              onChange={(e) =>
+                save.mutate({
+                  board_id: e.target.value,
+                })
+              }
+              className="rounded-md border border-border bg-background px-2 py-1">
+              <optgroup label="My Boards">
+                {boards?.my_boards?.map((board) => (
+                   <option key={board.id} value={board.id}>
+                      {board.name}
+                   </option>
+
+                ))}
+              </optgroup>
+              <optgroup label="Other Public Boards">
+                {boards?.other_public?.map((board) => (
+                  <option key={board.id} value={board.id}>
+                      {board.name}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
           </InfoRow>
-          <InfoRow label="Category">
-            {task.category ? task.category : <span className="text-muted-foreground">—</span>}
-          </InfoRow>
-          <InfoRow label="Board">{task.board_name}</InfoRow>
           {task.is_critical ? (
             <InfoRow label="Critical"><Badge tone="warning">Alarm reminder</Badge></InfoRow>
           ) : null}

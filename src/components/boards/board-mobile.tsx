@@ -18,11 +18,13 @@ export function BoardMobile({
   rows,
   onComplete,
   onClaim,
+  onRelease,
   onOpen,
 }: {
   rows: BoardRow[];
   onComplete: (row: BoardRow) => void;
   onClaim: (row: BoardRow) => void;
+  onRelease: (row: BoardRow) => void;
   onOpen: (row: BoardRow) => void;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
@@ -144,6 +146,12 @@ export function BoardMobile({
                       Claim
                     </Button>
                   ) : null}
+                  {!row.assignee && !done && !scheduled ? (
+                    <Button size="sm" variant="outline" onClick={() => onRelease(row)}>
+                      Release
+                    </Button>
+                  ) : null}
+
                   <Button size="sm" variant="ghost" onClick={() => onOpen(row)}>
                     Open full <ChevronRight className="h-4 w-4" />
                   </Button>
